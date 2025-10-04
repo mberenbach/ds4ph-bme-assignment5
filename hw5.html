@@ -7526,7 +7526,7 @@ a.anchor-link {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [126]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
@@ -7537,46 +7537,88 @@ a.anchor-link {
 
 <span class="n">GDP_COL_NAME</span> <span class="o">=</span> <span class="s2">"GDP (US$ million)"</span>
 
-<span class="c1"># Convenience to test the GDP retrieval function</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">retrieve_gdp_data</span><span class="p">():</span> 
-    <span class="c1"># Download and parse the page - I am using urllib to avoid SSL blocks</span>
-    <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="s2">"https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)"</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">'User-Agent'</span><span class="p">:</span> <span class="s1">'Mozilla/5.0'</span><span class="p">})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">retrieve_data_for_region</span><span class="p">(</span><span class="n">region_name</span><span class="p">,</span> <span class="n">region_url</span><span class="p">,</span> <span class="n">gdp_col_match</span><span class="o">=</span><span class="sa">r</span><span class="s1">'GDP.*'</span><span class="p">,</span> <span class="n">two_rank_cols</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">special_europe</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">req</span> <span class="o">=</span> <span class="n">Request</span><span class="p">(</span><span class="n">region_url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">'User-Agent'</span><span class="p">:</span> <span class="s1">'Mozilla/5.0'</span><span class="p">})</span>
     <span class="n">page</span> <span class="o">=</span> <span class="n">urlopen</span><span class="p">(</span><span class="n">req</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
     <span class="n">soup</span> <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="s2">"html.parser"</span><span class="p">)</span>
-    <span class="n">tables</span> <span class="o">=</span> <span class="n">soup</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">"table"</span><span class="p">,</span> <span class="n">class_</span><span class="o">=</span><span class="s2">"wikitable"</span><span class="p">)</span>
+    <span class="n">tables</span> <span class="o">=</span> <span class="n">soup</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">"table"</span><span class="p">)</span>    
 
     <span class="c1"># Find the GDP table</span>
     <span class="n">found_GDP_table</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">:</span>        
-        <span class="n">caption</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">'caption'</span><span class="p">)</span>
-        <span class="c1"># Find the IMF GDP forecast data</span>
-        <span class="k">if</span> <span class="n">caption</span> <span class="ow">and</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s1">'GDP forecast.*'</span><span class="p">,</span> <span class="n">caption</span><span class="o">.</span><span class="n">get_text</span><span class="p">(),</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">):</span>
-            <span class="n">found_GDP_table</span> <span class="o">=</span> <span class="n">table</span>
+    <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">:</span>                
+        <span class="n">headers</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">'th'</span><span class="p">)</span>        
+        <span class="c1"># Find the IMF GDP data for this table</span>
+
+        <span class="k">for</span> <span class="n">header</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">:</span>
+            <span class="c1"># print(f"  Header: {header.get_text()}")</span>
+            <span class="c1"># print(f"    Matching against: {gdp_col_match}")</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">gdp_col_match</span><span class="p">,</span> <span class="n">header</span><span class="o">.</span><span class="n">get_text</span><span class="p">(),</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">):</span>                
+                <span class="n">found_GDP_table</span> <span class="o">=</span> <span class="n">table</span>
+                <span class="k">break</span>
+        
+        <span class="k">if</span> <span class="n">found_GDP_table</span><span class="p">:</span>
             <span class="k">break</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">found_GDP_table</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Could not find the GDP table on the page."</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Could not find the GDP table on the page for </span><span class="si">{</span><span class="n">region_name</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
 
     <span class="c1"># Get the dataframe from the table</span>
     <span class="n">gdp_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_html</span><span class="p">(</span><span class="n">StringIO</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">found_GDP_table</span><span class="p">)))[</span><span class="mi">0</span><span class="p">]</span>
 
-    <span class="c1"># We only care about the IMF numbers, get column by position</span>
-    <span class="n">gdp_df</span> <span class="o">=</span> <span class="n">gdp_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">]]</span>
-    <span class="n">gdp_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'Country'</span><span class="p">,</span> <span class="n">GDP_COL_NAME</span><span class="p">]</span>
+    <span class="c1"># If two rank columns, just delete the second column to normalize</span>
+    <span class="k">if</span> <span class="n">two_rank_cols</span><span class="p">:</span>
+        <span class="n">gdp_df</span> <span class="o">=</span> <span class="n">gdp_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">gdp_df</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-    <span class="c1"># Remove the "World" row - not really needed</span>
-    <span class="n">gdp_df</span> <span class="o">=</span> <span class="n">gdp_df</span><span class="p">[</span><span class="n">gdp_df</span><span class="p">[</span><span class="s1">'Country'</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">'World'</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">special_europe</span> <span class="ow">or</span> <span class="n">region_name</span> <span class="o">==</span> <span class="s2">"Oceania"</span><span class="p">:</span>
+        <span class="c1"># There is no rank column, insert a dummy one with 0s (doesn't matter)        </span>
+        <span class="n">gdp_df</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s1">'Rank'</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>        
+    
+    <span class="k">if</span> <span class="n">special_europe</span><span class="p">:</span>
+        <span class="c1"># Now the column we care about will be the 3rd real col (skip 2030), so delete the second</span>
+        <span class="n">gdp_df</span> <span class="o">=</span> <span class="n">gdp_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">gdp_df</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>                
+    
+    <span class="c1"># Filter out rows where the first column is not an integer (no rank)</span>
+    <span class="n">gdp_df</span> <span class="o">=</span> <span class="n">gdp_df</span><span class="p">[</span><span class="n">gdp_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">isdigit</span><span class="p">())]</span>                    
 
-    <span class="c1"># Force numeric conversion on the GDP column</span>
-    <span class="n">gdp_df</span><span class="p">[</span><span class="n">GDP_COL_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">gdp_df</span><span class="p">[</span><span class="n">GDP_COL_NAME</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">','</span><span class="p">,</span> <span class="s1">''</span><span class="p">),</span> <span class="n">errors</span><span class="o">=</span><span class="s1">'coerce'</span><span class="p">)</span>
+    <span class="c1"># The column we care about will now be 1 and 2</span>
+    <span class="n">gdp_df</span> <span class="o">=</span> <span class="n">gdp_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]]</span>
+
+    <span class="n">gdp_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'Country'</span><span class="p">,</span> <span class="n">GDP_COL_NAME</span><span class="p">]</span>    
+
+    <span class="c1"># Force numeric conversion on the GDP column, if GDP column is a string</span>
+    <span class="k">if</span> <span class="n">gdp_df</span><span class="p">[</span><span class="n">GDP_COL_NAME</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="nb">object</span><span class="p">:</span>
+        <span class="n">gdp_df</span><span class="p">[</span><span class="n">GDP_COL_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">gdp_df</span><span class="p">[</span><span class="n">GDP_COL_NAME</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">','</span><span class="p">,</span> <span class="s1">''</span><span class="p">),</span> <span class="n">errors</span><span class="o">=</span><span class="s1">'coerce'</span><span class="p">)</span>
 
     <span class="c1"># Filter out NaNs (small territories, or folded into other countries)</span>
-    <span class="n">gdp_df</span> <span class="o">=</span> <span class="n">gdp_df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">GDP_COL_NAME</span><span class="p">])</span>
+    <span class="n">gdp_df</span> <span class="o">=</span> <span class="n">gdp_df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="n">GDP_COL_NAME</span><span class="p">])</span>        
+
+    <span class="c1"># Add the territory name as a column for each row</span>
+    <span class="n">gdp_df</span> <span class="o">=</span> <span class="n">gdp_df</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">Region</span><span class="o">=</span><span class="n">region_name</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">gdp_df</span>
 
+<span class="k">def</span><span class="w"> </span><span class="nf">retrieve_gdp_data_for_regions</span><span class="p">():</span>
+    <span class="c1"># The regions of the globe from the main wiki page (commonwealth is not really a region so we can omit)</span>
+    
+    <span class="n">ap_df</span> <span class="o">=</span> <span class="n">retrieve_data_for_region</span><span class="p">(</span><span class="s2">"Asia-Pacific"</span><span class="p">,</span> <span class="s2">"https://en.wikipedia.org/wiki/List_of_countries_in_Asia-Pacific_by_GDP_(nominal)"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"GDP.*"</span><span class="p">)</span>    
+    <span class="n">al_df</span> <span class="o">=</span> <span class="n">retrieve_data_for_region</span><span class="p">(</span><span class="s2">"Arab League"</span><span class="p">,</span> <span class="s2">"https://en.wikipedia.org/wiki/List_of_Arab_League_countries_by_GDP_(nominal)"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"Total GDP"</span><span class="p">)</span>
+    <span class="c1"># Normalize Arab League to $millions instead of $billions as on the page</span>
+    <span class="n">al_df</span> <span class="o">=</span> <span class="n">al_df</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">GDP_COL_NAME</span><span class="p">:</span> <span class="n">al_df</span><span class="p">[</span><span class="n">GDP_COL_NAME</span><span class="p">]</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">})</span>
+
+    <span class="n">afr_df</span> <span class="o">=</span> <span class="n">retrieve_data_for_region</span><span class="p">(</span><span class="s2">"Africa"</span><span class="p">,</span> <span class="s2">"https://en.wikipedia.org/wiki/List_of_African_countries_by_GDP_(nominal)"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"Nominal GDP.*"</span><span class="p">)</span>
+    <span class="n">lam_df</span> <span class="o">=</span> <span class="n">retrieve_data_for_region</span><span class="p">(</span><span class="s2">"Latin America"</span><span class="p">,</span> <span class="s2">"https://en.wikipedia.org/wiki/List_of_Latin_American_and_Caribbean_countries_by_GDP_(nominal)"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"GDP \(nominal\) \(millions.*"</span><span class="p">)</span>
+    <span class="n">oc_df</span> <span class="o">=</span> <span class="n">retrieve_data_for_region</span><span class="p">(</span><span class="s2">"Oceania"</span><span class="p">,</span> <span class="s2">"https://en.wikipedia.org/wiki/List_of_Oceanian_countries_by_GDP"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"GDP"</span><span class="p">)</span>
+    
+    <span class="n">na_df</span> <span class="o">=</span> <span class="n">retrieve_data_for_region</span><span class="p">(</span><span class="s2">"North America"</span><span class="p">,</span> <span class="s2">"https://en.wikipedia.org/wiki/List_of_North_American_countries_by_GDP_(nominal)"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"GDP.*"</span><span class="p">,</span> <span class="n">two_rank_cols</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">eu_df</span> <span class="o">=</span> <span class="n">retrieve_data_for_region</span><span class="p">(</span><span class="s2">"Europe"</span><span class="p">,</span> <span class="s2">"https://en.wikipedia.org/wiki/List_of_sovereign_states_in_Europe_by_GDP_(nominal)"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"2030 \(project"</span><span class="p">,</span> <span class="n">special_europe</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>    
+
+    <span class="c1"># Combine the dataframes</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">ap_df</span><span class="p">,</span> <span class="n">al_df</span><span class="p">,</span> <span class="n">afr_df</span><span class="p">,</span> <span class="n">lam_df</span><span class="p">,</span> <span class="n">oc_df</span><span class="p">,</span> <span class="n">na_df</span><span class="p">,</span> <span class="n">eu_df</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">df</span>
+
 <span class="c1"># Convenient test for debugging</span>
-<span class="n">gdp_df</span> <span class="o">=</span> <span class="n">retrieve_gdp_data</span><span class="p">()</span>
+<span class="n">gdp_df</span> <span class="o">=</span> <span class="n">retrieve_gdp_data_for_regions</span><span class="p">()</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="n">gdp_df</span><span class="p">)</span>
 </pre></div>
@@ -7591,20 +7633,20 @@ a.anchor-link {
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>              Country  GDP (US$ million)
-1       United States         27720700.0
-2          China[n 1]         17794782.0
-3             Germany          4525704.0
-4               India          3575778.0
-5               Japan          4204495.0
-..                ...                ...
-217          Kiribati              289.0
-218  Marshall Islands              270.0
-219             Nauru              176.0
-220        Montserrat               80.0
-221            Tuvalu               68.0
+<pre>             Country  GDP (US$ million)        Region
+0              China         17700899.0  Asia-Pacific
+1              Japan          4230862.0  Asia-Pacific
+2              India          3732224.0  Asia-Pacific
+3        South Korea          1709232.0  Asia-Pacific
+4          Australia          1687713.0  Asia-Pacific
+..               ...                ...           ...
+222  North Macedonia            17885.0        Europe
+223           Kosovo            11274.0        Europe
+224       Montenegro             8562.0        Europe
+225          Andorra             4035.0        Europe
+226       San Marino             2047.0        Europe
 
-[212 rows x 2 columns]
+[227 rows x 3 columns]
 </pre>
 </div>
 </div>
@@ -7615,22 +7657,17 @@ a.anchor-link {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [127]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="c1"># Now we can generate a plotly figure</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.express</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">px</span>
 
-<span class="c1"># Add a category column to classify the GDP range i.e. 0-100k, 100k-500k, etc.</span>
-<span class="n">ordered_labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'&lt;$1 trillion'</span><span class="p">,</span> <span class="s1">'$1-$10 trillion'</span><span class="p">,</span> <span class="s1">'10+ trillion'</span><span class="p">]</span>
-<span class="n">gdp_df</span><span class="p">[</span><span class="s1">'GDP Category'</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span><span class="n">gdp_df</span><span class="p">[</span><span class="n">GDP_COL_NAME</span><span class="p">],</span> 
-                               <span class="n">bins</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1_000_000</span><span class="p">,</span> <span class="mi">10_000_000</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s1">'inf'</span><span class="p">)],</span> <span class="n">labels</span><span class="o">=</span><span class="n">ordered_labels</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
-
-<span class="n">fig</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">gdp_df</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s1">'GDP Category'</span><span class="p">,</span> 
+<span class="c1"># create a stacked bar chart for GDP, by region</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">gdp_df</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="s1">'Region'</span><span class="p">,</span> 
              <span class="n">y</span><span class="o">=</span><span class="n">GDP_COL_NAME</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">'Country'</span><span class="p">,</span> 
-             <span class="n">title</span><span class="o">=</span><span class="s1">'GDP by Country, in "trillions" (millions of millions)'</span><span class="p">,</span> 
-             <span class="n">barmode</span><span class="o">=</span><span class="s1">'relative'</span><span class="p">,</span> 
-             <span class="n">category_orders</span><span class="o">=</span><span class="p">{</span><span class="s1">'GDP Category'</span><span class="p">:</span> <span class="n">ordered_labels</span><span class="p">})</span>
+             <span class="n">title</span><span class="o">=</span><span class="s1">'GDP by Country and Region, in "trillions" (thousands of millions)'</span><span class="p">,</span> 
+             <span class="n">barmode</span><span class="o">=</span><span class="s1">'relative'</span><span class="p">)</span>
 
 <span class="c1"># For copy to github pages</span>
 <span class="n">fig</span><span class="o">.</span><span class="n">write_html</span><span class="p">(</span><span class="s2">"stacked_bar.html"</span><span class="p">)</span>
@@ -7666,7 +7703,7 @@ a.anchor-link {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [128]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [131]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
@@ -7866,6 +7903,20 @@ a.anchor-link {
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=128233f4">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="Diagram-Links">Diagram Links<a class="anchor-link" href="#Diagram-Links">¶</a></h1><ul>
+<li>Stacked Bar Chart: <a href="https://mberenbach.github.io/ds4ph-bme-assignment5/stacked_bar.html">https://mberenbach.github.io/ds4ph-bme-assignment5/stacked_bar.html</a></li>
+<li>Sankey ICV Chart: <a href="https://mberenbach.github.io/ds4ph-bme-assignment5/sankey.html">https://mberenbach.github.io/ds4ph-bme-assignment5/sankey.html</a></li>
+</ul>
 </div>
 </div>
 </div>
